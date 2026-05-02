@@ -9,10 +9,11 @@ import (
 	"github.com/sacramento-finance/backend/internal/domain/fund"
 	"github.com/sacramento-finance/backend/internal/domain/governance"
 	"github.com/sacramento-finance/backend/internal/domain/ledger"
+	ucpayment "github.com/sacramento-finance/backend/internal/usecase/payment"
+	ucvaca "github.com/sacramento-finance/backend/internal/usecase/vaca"
 	"github.com/sacramento-finance/backend/pkg/apperror"
 	"github.com/sacramento-finance/backend/pkg/idgen"
 	"github.com/sacramento-finance/backend/pkg/money"
-	ucpayment "github.com/sacramento-finance/backend/internal/usecase/payment"
 )
 
 type CastVoteUseCase struct {
@@ -22,6 +23,7 @@ type CastVoteUseCase struct {
 	members          fund.MemberRepository
 	payments         ucpayment.WritePaymentRepository
 	generateSchedule *ucpayment.GenerateScheduleUseCase
+	distributeVaca   *ucvaca.DistributeUseCase
 }
 
 func NewCastVoteUseCase(
@@ -31,6 +33,7 @@ func NewCastVoteUseCase(
 	members fund.MemberRepository,
 	payments ucpayment.WritePaymentRepository,
 	generateSchedule *ucpayment.GenerateScheduleUseCase,
+	distributeVaca *ucvaca.DistributeUseCase,
 ) *CastVoteUseCase {
 	return &CastVoteUseCase{
 		proposals:        proposals,
@@ -39,6 +42,7 @@ func NewCastVoteUseCase(
 		members:          members,
 		payments:         payments,
 		generateSchedule: generateSchedule,
+		distributeVaca:   distributeVaca,
 	}
 }
 
@@ -234,13 +238,11 @@ func (uc *CastVoteUseCase) executeProposal(ctx context.Context, p *governance.Pr
 		return uc.funds.Update(ctx, f)
 
 	case governance.ProposalTypeDistributeVaca:
-		// Mark fund as completed — actual ledger distribution is a separate operation
-		if !f.CanTransitionTo(fund.FundStatusCompleted) {
-			return nil
+		if uc.distributeVaca == nil {
+			return apperror.ErrInternal
 		}
-		f.Status = fund.FundStatusCompleted
-		f.UpdatedAt = time.Now().UTC()
-		return uc.funds.Update(ctx, f)
+		_, err := uc.distributeVaca.Execute(ctx, f)
+		return err
 	}
 
 	return nil

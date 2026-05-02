@@ -16,7 +16,7 @@ import (
 
 type mockFundRepo struct{ updated *fund.Fund }
 
-func (m *mockFundRepo) Create(_ context.Context, f *fund.Fund) error  { return nil }
+func (m *mockFundRepo) Create(_ context.Context, f *fund.Fund) error { return nil }
 func (m *mockFundRepo) GetByID(_ context.Context, _ uuid.UUID) (*fund.Fund, error) {
 	return nil, nil
 }
@@ -28,7 +28,12 @@ func (m *mockFundRepo) Update(_ context.Context, f *fund.Fund) error {
 	return nil
 }
 
-type mockMemberRepo struct{ members []*fund.FundMember }
+type mockMemberRepo struct {
+	members   []*fund.FundMember
+	updated   []*fund.FundMember
+	listErr   error
+	updateErr error
+}
 
 func (m *mockMemberRepo) Add(_ context.Context, _ *fund.FundMember) error { return nil }
 func (m *mockMemberRepo) GetByFundAndUser(_ context.Context, _, _ uuid.UUID) (*fund.FundMember, error) {
@@ -38,9 +43,15 @@ func (m *mockMemberRepo) GetByID(_ context.Context, _ uuid.UUID) (*fund.FundMemb
 	return nil, nil
 }
 func (m *mockMemberRepo) ListByFund(_ context.Context, _ uuid.UUID) ([]*fund.FundMember, error) {
-	return m.members, nil
+	return m.members, m.listErr
 }
-func (m *mockMemberRepo) Update(_ context.Context, _ *fund.FundMember) error { return nil }
+func (m *mockMemberRepo) Update(_ context.Context, member *fund.FundMember) error {
+	if m.updateErr != nil {
+		return m.updateErr
+	}
+	m.updated = append(m.updated, member)
+	return nil
+}
 func (m *mockMemberRepo) CountActive(_ context.Context, _ uuid.UUID) (int, error) {
 	return len(m.members), nil
 }
@@ -84,8 +95,8 @@ func (m *mockLedgerWriter) RecordEntriesTx(_ context.Context, entries []*ledger.
 
 func activeCirculoFund(totalPeriods int) *fund.Fund {
 	return &fund.Fund{
-		ID:   uuid.New(),
-		Type: fund.FundTypeCirculo,
+		ID:     uuid.New(),
+		Type:   fund.FundTypeCirculo,
 		Status: fund.FundStatusActive,
 		Rules: fund.Rules{
 			ContributionAmount: decimal.NewFromInt(100000),
@@ -118,10 +129,10 @@ func TestCloseRound_Success(t *testing.T) {
 
 	cfg := &fund.CirculoConfig{FundID: f.ID, CurrentRound: 1, RoundsCompleted: 0, PayoutOrderType: "fixed"}
 
-	fundRepo    := &mockFundRepo{}
-	memberRepo  := &mockMemberRepo{members: members}
+	fundRepo := &mockFundRepo{}
+	memberRepo := &mockMemberRepo{members: members}
 	circuloRepo := &mockCirculoRepo{cfg: cfg}
-	payoutRepo  := &mockPayoutRepo{}
+	payoutRepo := &mockPayoutRepo{}
 	ledgerWriter := &mockLedgerWriter{}
 
 	uc := circulo.NewCloseRoundUseCase(fundRepo, memberRepo, circuloRepo, payoutRepo, ledgerWriter)
@@ -171,10 +182,10 @@ func TestCloseRound_LastRound_MarksCompleted(t *testing.T) {
 	cfg := &fund.CirculoConfig{FundID: f.ID, CurrentRound: 1, RoundsCompleted: 0}
 	members := []*fund.FundMember{memberWithOrder(f.ID, 1)}
 
-	fundRepo    := &mockFundRepo{}
-	memberRepo  := &mockMemberRepo{members: members}
+	fundRepo := &mockFundRepo{}
+	memberRepo := &mockMemberRepo{members: members}
 	circuloRepo := &mockCirculoRepo{cfg: cfg}
-	payoutRepo  := &mockPayoutRepo{}
+	payoutRepo := &mockPayoutRepo{}
 	ledgerWriter := &mockLedgerWriter{}
 
 	uc := circulo.NewCloseRoundUseCase(fundRepo, memberRepo, circuloRepo, payoutRepo, ledgerWriter)

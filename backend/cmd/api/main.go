@@ -81,14 +81,6 @@ func main() {
 	recordPaymentUC := ucpayment.NewRecordPaymentUseCase(paymentRepo, ledgerRepo)
 	waivePaymentUC := ucpayment.NewWaivePaymentUseCase(paymentRepo)
 
-	// Governance use cases
-	createProposalUC := ucgovernance.NewCreateProposalUseCase(proposalRepo, memberRepo)
-	castVoteUC := ucgovernance.NewCastVoteUseCase(
-		proposalRepo, voteRepo,
-		fundRepo, memberRepo,
-		paymentRepo, generateScheduleUC,
-	)
-
 	// Product-specific use cases
 	assignPayoutOrderUC := uccirculo.NewAssignPayoutOrderUseCase(circuloRepo, memberRepo)
 	closeRoundUC := uccirculo.NewCloseRoundUseCase(fundRepo, memberRepo, circuloRepo, payoutRepo, ledgerRepo)
@@ -97,15 +89,24 @@ func main() {
 	accrueInterestUC := ucfondo.NewAccrueInterestUseCase(fondoRepo, ledgerRepo)
 	withdrawUC := ucfondo.NewWithdrawUseCase(fondoRepo, ledgerRepo)
 
+	// Governance use cases
+	createProposalUC := ucgovernance.NewCreateProposalUseCase(proposalRepo, memberRepo)
+	castVoteUC := ucgovernance.NewCastVoteUseCase(
+		proposalRepo, voteRepo,
+		fundRepo, memberRepo,
+		paymentRepo, generateScheduleUC, distributeVacaUC,
+	)
+
 	// Notification service
 	notifSvc := ucnotif.NewService(notificationRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(registerUC, loginUC)
 	userHandler := handler.NewUserHandler(userRepo)
-	fundHandler := handler.NewFundHandler(fundRepo, memberRepo, generateScheduleUC, circuloRepo, vacaRepo, fondoRepo, notifSvc)
+	fundHandler := handler.NewFundHandler(fundRepo, memberRepo, userRepo, generateScheduleUC, circuloRepo, vacaRepo, fondoRepo, notifSvc)
 	paymentHandler := handler.NewPaymentHandler(recordPaymentUC, waivePaymentUC, paymentRepo, ledgerRepo, fundRepo, memberRepo, notifSvc)
 	proposalHandler := handler.NewProposalHandler(createProposalUC, castVoteUC, proposalRepo, voteRepo, fundRepo, memberRepo, notifSvc)
+	dashboardHandler := handler.NewDashboardHandler(fundRepo, memberRepo, paymentRepo, proposalRepo, notificationRepo)
 	circuloHandler := handler.NewCirculoHandler(assignPayoutOrderUC, closeRoundUC, circuloRepo, payoutRepo, fundRepo, memberRepo, notifSvc)
 	vacaHandler := handler.NewVacaHandler(getProgressUC, distributeVacaUC, vacaRepo, fundRepo, memberRepo, notifSvc)
 	fondoHandler := handler.NewFondoHandler(accrueInterestUC, withdrawUC, fondoRepo, ledgerRepo, fundRepo, memberRepo, notifSvc)
@@ -117,6 +118,7 @@ func main() {
 		Fund:         fundHandler,
 		Payment:      paymentHandler,
 		Proposal:     proposalHandler,
+		Dashboard:    dashboardHandler,
 		Circulo:      circuloHandler,
 		Vaca:         vacaHandler,
 		Fondo:        fondoHandler,

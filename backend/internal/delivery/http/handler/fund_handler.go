@@ -11,16 +11,18 @@ import (
 	"github.com/sacramento-finance/backend/internal/delivery/http/middleware"
 	"github.com/sacramento-finance/backend/internal/domain/fund"
 	"github.com/sacramento-finance/backend/internal/domain/notification"
+	"github.com/sacramento-finance/backend/internal/domain/user"
+	ucnotif "github.com/sacramento-finance/backend/internal/usecase/notification"
+	ucpayment "github.com/sacramento-finance/backend/internal/usecase/payment"
 	"github.com/sacramento-finance/backend/pkg/apperror"
 	"github.com/sacramento-finance/backend/pkg/idgen"
 	"github.com/sacramento-finance/backend/pkg/money"
-	ucnotif "github.com/sacramento-finance/backend/internal/usecase/notification"
-	ucpayment "github.com/sacramento-finance/backend/internal/usecase/payment"
 )
 
 type FundHandler struct {
 	funds            fund.Repository
 	members          fund.MemberRepository
+	users            user.Repository
 	generateSchedule *ucpayment.GenerateScheduleUseCase
 	circuloRepo      fund.CirculoRepository
 	vacaRepo         fund.VacaRepository
@@ -31,6 +33,7 @@ type FundHandler struct {
 func NewFundHandler(
 	funds fund.Repository,
 	members fund.MemberRepository,
+	users user.Repository,
 	generateSchedule *ucpayment.GenerateScheduleUseCase,
 	circuloRepo fund.CirculoRepository,
 	vacaRepo fund.VacaRepository,
@@ -40,6 +43,7 @@ func NewFundHandler(
 	return &FundHandler{
 		funds:            funds,
 		members:          members,
+		users:            users,
 		generateSchedule: generateSchedule,
 		circuloRepo:      circuloRepo,
 		vacaRepo:         vacaRepo,
@@ -49,21 +53,21 @@ func NewFundHandler(
 }
 
 type createFundRequest struct {
-	Name               string               `json:"name" binding:"required,min=3,max=100"`
-	Description        string               `json:"description"`
-	Type               fund.FundType        `json:"type" binding:"required,oneof=circulo vaca fondo_ahorro"`
-	ContributionAmount string               `json:"contribution_amount" binding:"required"`
-	Frequency          fund.PeriodFrequency `json:"frequency" binding:"required,oneof=weekly biweekly monthly"`
-	TotalPeriods       int                  `json:"total_periods" binding:"required,min=1"`
-	StartDate          string               `json:"start_date" binding:"required"`
-	PenaltyEnabled     bool                 `json:"penalty_enabled"`
-	PenaltyType        fund.PenaltyType     `json:"penalty_type"`
-	PenaltyAmount      string               `json:"penalty_amount"`
-	GracePeriodDays    int                  `json:"grace_period_days"`
-	MinMembers         int                  `json:"min_members" binding:"min=1"`
-	MaxMembers         int                  `json:"max_members"`
-	GovernanceType     fund.GovernanceType  `json:"governance_type" binding:"omitempty,oneof=admin_only majority unanimous"`
-	VotingDeadlineHours int                 `json:"voting_deadline_hours"`
+	Name                string               `json:"name" binding:"required,min=3,max=100"`
+	Description         string               `json:"description"`
+	Type                fund.FundType        `json:"type" binding:"required,oneof=circulo vaca fondo_ahorro"`
+	ContributionAmount  string               `json:"contribution_amount" binding:"required"`
+	Frequency           fund.PeriodFrequency `json:"frequency" binding:"required,oneof=weekly biweekly monthly"`
+	TotalPeriods        int                  `json:"total_periods" binding:"required,min=1"`
+	StartDate           string               `json:"start_date" binding:"required"`
+	PenaltyEnabled      bool                 `json:"penalty_enabled"`
+	PenaltyType         fund.PenaltyType     `json:"penalty_type"`
+	PenaltyAmount       string               `json:"penalty_amount"`
+	GracePeriodDays     int                  `json:"grace_period_days"`
+	MinMembers          int                  `json:"min_members" binding:"min=1"`
+	MaxMembers          int                  `json:"max_members"`
+	GovernanceType      fund.GovernanceType  `json:"governance_type" binding:"omitempty,oneof=admin_only majority unanimous"`
+	VotingDeadlineHours int                  `json:"voting_deadline_hours"`
 
 	// Circulo-specific
 	PayoutOrderType string `json:"payout_order_type" binding:"omitempty,oneof=fixed randomized"`
@@ -74,8 +78,8 @@ type createFundRequest struct {
 	DistributionType string `json:"distribution_type" binding:"omitempty,oneof=goal_reached unanimous_vote"`
 
 	// Fondo de ahorro-specific
-	InterestRate            string `json:"interest_rate"`
-	EarlyWithdrawalPenalty  string `json:"early_withdrawal_penalty"`
+	InterestRate           string `json:"interest_rate"`
+	EarlyWithdrawalPenalty string `json:"early_withdrawal_penalty"`
 }
 
 func (h *FundHandler) Create(c *gin.Context) {
@@ -134,13 +138,13 @@ func (h *FundHandler) Create(c *gin.Context) {
 		CreatorID:   userID,
 		Currency:    "COP",
 		Rules: fund.Rules{
-			ContributionAmount: amount,
-			Frequency:          req.Frequency,
-			TotalPeriods:       req.TotalPeriods,
-			StartDate:          startDate,
-			PenaltyEnabled:     req.PenaltyEnabled,
-			PenaltyType:        req.PenaltyType,
-			PenaltyAmount:      penaltyAmount,
+			ContributionAmount:  amount,
+			Frequency:           req.Frequency,
+			TotalPeriods:        req.TotalPeriods,
+			StartDate:           startDate,
+			PenaltyEnabled:      req.PenaltyEnabled,
+			PenaltyType:         req.PenaltyType,
+			PenaltyAmount:       penaltyAmount,
 			GracePeriodDays:     req.GracePeriodDays,
 			MinMembers:          minMembers,
 			MaxMembers:          maxMembers,
@@ -221,6 +225,15 @@ func (h *FundHandler) Get(c *gin.Context) {
 	fundID, err := uuid.Parse(c.Param("fund_id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": apperror.ErrBadRequest})
+		return
+	}
+
+	userIDStr, _ := middleware.GetUserID(c)
+	userID, _ := uuid.Parse(userIDStr)
+
+	member, err := h.members.GetByFundAndUser(c.Request.Context(), fundID, userID)
+	if err != nil || member == nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": apperror.ErrNotFundMember})
 		return
 	}
 
@@ -388,6 +401,15 @@ func (h *FundHandler) ListMembers(c *gin.Context) {
 		return
 	}
 
+	userIDStr, _ := middleware.GetUserID(c)
+	userID, _ := uuid.Parse(userIDStr)
+
+	member, err := h.members.GetByFundAndUser(c.Request.Context(), fundID, userID)
+	if err != nil || member == nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": apperror.ErrNotFundMember})
+		return
+	}
+
 	members, err := h.members.ListByFund(c.Request.Context(), fundID)
 	if err != nil {
 		respondError(c, err)
@@ -398,7 +420,10 @@ func (h *FundHandler) ListMembers(c *gin.Context) {
 }
 
 type addMemberRequest struct {
-	UserID string `json:"user_id" binding:"required,uuid"`
+	UserID         string `json:"user_id"`
+	Email          string `json:"email"`
+	DocumentType   string `json:"document_type"`
+	DocumentNumber string `json:"document_number"`
 }
 
 func (h *FundHandler) AddMember(c *gin.Context) {
@@ -424,7 +449,11 @@ func (h *FundHandler) AddMember(c *gin.Context) {
 		return
 	}
 
-	targetID, _ := uuid.Parse(req.UserID)
+	targetID, err := h.resolveAddMemberTarget(c.Request.Context(), req)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
 
 	// Check not already a member
 	existing, _ := h.members.GetByFundAndUser(c.Request.Context(), fundID, targetID)
@@ -472,4 +501,44 @@ func (h *FundHandler) AddMember(c *gin.Context) {
 	}()
 
 	c.JSON(http.StatusCreated, gin.H{"data": member})
+}
+
+func (h *FundHandler) resolveAddMemberTarget(ctx context.Context, req addMemberRequest) (uuid.UUID, error) {
+	if req.UserID != "" {
+		targetID, err := uuid.Parse(req.UserID)
+		if err != nil {
+			return uuid.Nil, apperror.ErrBadRequest
+		}
+		return targetID, nil
+	}
+
+	if req.Email != "" {
+		u, err := h.users.GetByEmail(ctx, req.Email)
+		if err != nil {
+			return uuid.Nil, err
+		}
+		if u == nil {
+			return uuid.Nil, apperror.ErrNotFound
+		}
+		return u.ID, nil
+	}
+
+	if req.DocumentType != "" || req.DocumentNumber != "" {
+		if req.DocumentType == "" || req.DocumentNumber == "" {
+			return uuid.Nil, apperror.ErrBadRequest
+		}
+		if msg := validateDocumentNumber(req.DocumentType, req.DocumentNumber); msg != "" {
+			return uuid.Nil, apperror.ErrBadRequest
+		}
+		u, err := h.users.GetByDocument(ctx, user.DocumentType(req.DocumentType), req.DocumentNumber)
+		if err != nil {
+			return uuid.Nil, err
+		}
+		if u == nil {
+			return uuid.Nil, apperror.ErrNotFound
+		}
+		return u.ID, nil
+	}
+
+	return uuid.Nil, apperror.ErrBadRequest
 }

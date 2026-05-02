@@ -65,9 +65,9 @@ func (uc *AssignPayoutOrderUseCase) Execute(
 		return nil
 	}
 
-	// Manual: build lookup map and apply each assignment
-	memberByID := make(map[uuid.UUID]*fund.FundMember, len(members))
-	for _, m := range members {
+	// Manual: build lookup map from active members only and apply each assignment.
+	memberByID := make(map[uuid.UUID]*fund.FundMember, len(active))
+	for _, m := range active {
 		memberByID[m.ID] = m
 	}
 	for _, a := range assignments {

@@ -12,6 +12,7 @@ type Handlers struct {
 	Fund         *handler.FundHandler
 	Payment      *handler.PaymentHandler
 	Proposal     *handler.ProposalHandler
+	Dashboard    *handler.DashboardHandler
 	Circulo      *handler.CirculoHandler
 	Vaca         *handler.VacaHandler
 	Fondo        *handler.FondoHandler
@@ -38,7 +39,9 @@ func SetupRouter(h *Handlers, jwtSecret string) *gin.Engine {
 	protected := v1.Group("")
 	protected.Use(middleware.Auth(jwtSecret))
 	{
+		protected.GET("/dashboard", h.Dashboard.Get)
 		protected.GET("/users/me", h.User.Me)
+		protected.PATCH("/users/me", h.User.UpdateMe)
 
 		funds := protected.Group("/funds")
 		{

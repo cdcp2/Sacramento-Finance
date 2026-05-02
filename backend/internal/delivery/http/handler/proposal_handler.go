@@ -13,17 +13,16 @@ import (
 	"github.com/sacramento-finance/backend/internal/domain/fund"
 	"github.com/sacramento-finance/backend/internal/domain/governance"
 	"github.com/sacramento-finance/backend/internal/domain/notification"
-	"github.com/sacramento-finance/backend/pkg/apperror"
 	ucgovernance "github.com/sacramento-finance/backend/internal/usecase/governance"
 	ucnotif "github.com/sacramento-finance/backend/internal/usecase/notification"
-	"github.com/sacramento-finance/backend/internal/infrastructure/repository"
+	"github.com/sacramento-finance/backend/pkg/apperror"
 )
 
 type ProposalHandler struct {
 	createProposal *ucgovernance.CreateProposalUseCase
 	castVote       *ucgovernance.CastVoteUseCase
-	proposals      *repository.ProposalRepo
-	votes          *repository.VoteRepo
+	proposals      governance.ProposalRepository
+	votes          governance.VoteRepository
 	funds          fund.Repository
 	members        fund.MemberRepository
 	notifSvc       *ucnotif.Service
@@ -32,8 +31,8 @@ type ProposalHandler struct {
 func NewProposalHandler(
 	createProposal *ucgovernance.CreateProposalUseCase,
 	castVote *ucgovernance.CastVoteUseCase,
-	proposals *repository.ProposalRepo,
-	votes *repository.VoteRepo,
+	proposals governance.ProposalRepository,
+	votes governance.VoteRepository,
 	funds fund.Repository,
 	members fund.MemberRepository,
 	notifSvc *ucnotif.Service,
@@ -291,7 +290,7 @@ func validateProposalPayload(pType governance.ProposalType, raw json.RawMessage)
 			p.GovernanceType != fund.GovernanceUnanimous {
 			return "governance_type must be admin_only, majority, or unanimous"
 		}
-	// activate_fund, cancel_fund, change_rules, distribute_vaca: payload is optional
+		// activate_fund, cancel_fund, change_rules, distribute_vaca: payload is optional
 	}
 	return ""
 }

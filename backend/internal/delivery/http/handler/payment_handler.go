@@ -9,18 +9,29 @@ import (
 	"github.com/google/uuid"
 	"github.com/sacramento-finance/backend/internal/delivery/http/middleware"
 	"github.com/sacramento-finance/backend/internal/domain/fund"
+	"github.com/sacramento-finance/backend/internal/domain/ledger"
 	"github.com/sacramento-finance/backend/internal/domain/notification"
-	"github.com/sacramento-finance/backend/internal/infrastructure/repository"
-	"github.com/sacramento-finance/backend/pkg/apperror"
 	ucnotif "github.com/sacramento-finance/backend/internal/usecase/notification"
 	ucpayment "github.com/sacramento-finance/backend/internal/usecase/payment"
+	"github.com/sacramento-finance/backend/pkg/apperror"
+	"github.com/shopspring/decimal"
 )
+
+type paymentListRepository interface {
+	ListByMember(ctx context.Context, memberID uuid.UUID) ([]*ledger.Payment, error)
+	ListByFund(ctx context.Context, fundID uuid.UUID) ([]*ledger.Payment, error)
+}
+
+type ledgerReadRepository interface {
+	GetFundBalance(ctx context.Context, fundID uuid.UUID) (decimal.Decimal, error)
+	ListByFund(ctx context.Context, fundID uuid.UUID, limit, offset int) ([]*ledger.LedgerEntry, error)
+}
 
 type PaymentHandler struct {
 	recordPayment *ucpayment.RecordPaymentUseCase
 	waivePayment  *ucpayment.WaivePaymentUseCase
-	payments      *repository.PaymentRepo
-	ledger        *repository.LedgerRepo
+	payments      paymentListRepository
+	ledger        ledgerReadRepository
 	funds         fund.Repository
 	members       fund.MemberRepository
 	notifSvc      *ucnotif.Service
@@ -29,8 +40,8 @@ type PaymentHandler struct {
 func NewPaymentHandler(
 	recordPayment *ucpayment.RecordPaymentUseCase,
 	waivePayment *ucpayment.WaivePaymentUseCase,
-	payments *repository.PaymentRepo,
-	ledger *repository.LedgerRepo,
+	payments paymentListRepository,
+	ledger ledgerReadRepository,
 	funds fund.Repository,
 	members fund.MemberRepository,
 	notifSvc *ucnotif.Service,
@@ -175,6 +186,20 @@ func (h *PaymentHandler) Waive(c *gin.Context) {
 	member, err := h.members.GetByFundAndUser(c.Request.Context(), fundID, userID)
 	if err != nil || member == nil || !member.IsAdmin() {
 		c.JSON(http.StatusForbidden, gin.H{"error": apperror.ErrNotFundAdmin})
+		return
+	}
+
+	f, err := h.funds.GetByID(c.Request.Context(), fundID)
+	if err != nil || f == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": apperror.ErrFundNotFound})
+		return
+	}
+
+	if f.Rules.IsGoverned() {
+		c.JSON(http.StatusForbidden, gin.H{"error": gin.H{
+			"code":    "USE_PROPOSAL",
+			"message": "this fund uses governance voting; create a waive_payment proposal instead",
+		}})
 		return
 	}
 

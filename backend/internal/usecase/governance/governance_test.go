@@ -13,6 +13,7 @@ import (
 	"github.com/sacramento-finance/backend/internal/domain/ledger"
 	ucgovernance "github.com/sacramento-finance/backend/internal/usecase/governance"
 	ucpayment "github.com/sacramento-finance/backend/internal/usecase/payment"
+	ucvaca "github.com/sacramento-finance/backend/internal/usecase/vaca"
 	"github.com/shopspring/decimal"
 )
 
@@ -143,6 +144,30 @@ func (m *mockPaymentWriteRepo) CreateBatch(_ context.Context, _ []*ledger.Paymen
 	return nil
 }
 
+type mockGovernanceVacaRepo struct{}
+
+func (m *mockGovernanceVacaRepo) Create(_ context.Context, _ *fund.VacaConfig) error { return nil }
+func (m *mockGovernanceVacaRepo) GetByFundID(_ context.Context, fundID uuid.UUID) (*fund.VacaConfig, error) {
+	return &fund.VacaConfig{FundID: fundID, GoalAmount: decimal.NewFromInt(1000000)}, nil
+}
+func (m *mockGovernanceVacaRepo) Update(_ context.Context, _ *fund.VacaConfig) error { return nil }
+
+type mockGovernanceVacaLedger struct {
+	balance  decimal.Decimal
+	recorded []*ledger.LedgerEntry
+}
+
+func (m *mockGovernanceVacaLedger) GetFundBalance(_ context.Context, _ uuid.UUID) (decimal.Decimal, error) {
+	if m.balance.IsZero() {
+		return decimal.NewFromInt(1000), nil
+	}
+	return m.balance, nil
+}
+func (m *mockGovernanceVacaLedger) RecordEntriesTx(_ context.Context, entries []*ledger.LedgerEntry) error {
+	m.recorded = append(m.recorded, entries...)
+	return nil
+}
+
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
 func majorityFund() *fund.Fund {
@@ -186,8 +211,20 @@ func openProposal(fundID uuid.UUID, pType governance.ProposalType, totalMembers 
 }
 
 func newCastVoteUC(proposals *mockProposalRepo, votes *mockVoteRepo, funds *mockFundRepo, members *mockMemberRepo, payments *mockPaymentWriteRepo) *ucgovernance.CastVoteUseCase {
+	return newCastVoteUCWithVacaLedger(proposals, votes, funds, members, payments, &mockGovernanceVacaLedger{})
+}
+
+func newCastVoteUCWithVacaLedger(
+	proposals *mockProposalRepo,
+	votes *mockVoteRepo,
+	funds *mockFundRepo,
+	members *mockMemberRepo,
+	payments *mockPaymentWriteRepo,
+	vacaLedger *mockGovernanceVacaLedger,
+) *ucgovernance.CastVoteUseCase {
 	genSchedule := ucpayment.NewGenerateScheduleUseCase(payments)
-	return ucgovernance.NewCastVoteUseCase(proposals, votes, funds, members, payments, genSchedule)
+	distributeVaca := ucvaca.NewDistributeUseCase(&mockGovernanceVacaRepo{}, funds, members, vacaLedger)
+	return ucgovernance.NewCastVoteUseCase(proposals, votes, funds, members, payments, genSchedule, distributeVaca)
 }
 
 // ─── CreateProposal tests ─────────────────────────────────────────────────────
@@ -696,7 +733,7 @@ func TestCastVote_ChangeGovernance_UpdatesGovernanceType(t *testing.T) {
 	}
 }
 
-func TestCastVote_DistributeVaca_MarksFundCompleted(t *testing.T) {
+func TestCastVote_DistributeVaca_DistributesBalanceAndMarksFundCompleted(t *testing.T) {
 	f := majorityFund()
 	f.Type = fund.FundTypeVaca
 	f.Status = fund.FundStatusActive
@@ -704,8 +741,12 @@ func TestCastVote_DistributeVaca_MarksFundCompleted(t *testing.T) {
 	p.VotesFor = 1
 	proposalRepo := &mockProposalRepo{stored: p}
 	fundRepo := &mockFundRepo{f: f}
+	memberA := &fund.FundMember{ID: uuid.New(), FundID: f.ID, UserID: uuid.New(), Status: fund.MemberStatusActive}
+	memberB := &fund.FundMember{ID: uuid.New(), FundID: f.ID, UserID: uuid.New(), Status: fund.MemberStatusActive}
+	members := &mockMemberRepo{members: []*fund.FundMember{memberA, memberB}}
+	vacaLedger := &mockGovernanceVacaLedger{balance: decimal.NewFromInt(200000)}
 
-	uc := newCastVoteUC(proposalRepo, &mockVoteRepo{}, fundRepo, &mockMemberRepo{}, &mockPaymentWriteRepo{})
+	uc := newCastVoteUCWithVacaLedger(proposalRepo, &mockVoteRepo{}, fundRepo, members, &mockPaymentWriteRepo{}, vacaLedger)
 	result, err := uc.Execute(context.Background(), p.ID, uuid.New(), governance.VoteYes, f)
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
@@ -715,6 +756,20 @@ func TestCastVote_DistributeVaca_MarksFundCompleted(t *testing.T) {
 	}
 	if fundRepo.updated == nil || fundRepo.updated.Status != fund.FundStatusCompleted {
 		t.Errorf("expected fund status = completed, got %v", fundRepo.updated)
+	}
+	if len(vacaLedger.recorded) != 2 {
+		t.Fatalf("expected 2 payout ledger entries, got %d", len(vacaLedger.recorded))
+	}
+	for i, entry := range vacaLedger.recorded {
+		if entry.Type != ledger.EntryTypePayout {
+			t.Errorf("entry[%d].Type = %s, want payout", i, entry.Type)
+		}
+		if entry.Direction != ledger.DirectionDebit {
+			t.Errorf("entry[%d].Direction = %s, want debit", i, entry.Direction)
+		}
+		if !entry.Amount.Equal(decimal.NewFromInt(100000)) {
+			t.Errorf("entry[%d].Amount = %s, want 100000", i, entry.Amount)
+		}
 	}
 }
 
