@@ -47,10 +47,10 @@ func NewCastVoteUseCase(
 }
 
 type CastVoteResult struct {
-	Vote     *governance.Vote
-	Proposal *governance.Proposal
-	Resolved bool
-	Approved bool
+	Vote     *governance.Vote     `json:"vote"`
+	Proposal *governance.Proposal `json:"proposal"`
+	Resolved bool                 `json:"resolved"`
+	Approved bool                 `json:"approved"`
 }
 
 func (uc *CastVoteUseCase) Execute(

@@ -21,6 +21,7 @@ type LoginInput struct {
 type TokenPair struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
+	TokenType    string `json:"token_type"`
 	ExpiresIn    int64  `json:"expires_in"`
 }
 
@@ -95,6 +96,7 @@ func (uc *LoginUseCase) Execute(ctx context.Context, in LoginInput) (*TokenPair,
 	return &TokenPair{
 		AccessToken:  signed,
 		RefreshToken: signedRefresh,
+		TokenType:    "Bearer",
 		ExpiresIn:    int64(uc.accessTTL.Seconds()),
 	}, nil
 }

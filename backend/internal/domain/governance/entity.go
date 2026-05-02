@@ -38,28 +38,28 @@ const (
 
 // Proposal represents a governance action pending a vote.
 type Proposal struct {
-	ID           uuid.UUID
-	FundID       uuid.UUID
-	ProposerID   uuid.UUID      // fund_member.id
-	Type         ProposalType
-	Status       ProposalStatus
-	Payload      json.RawMessage
-	VotesFor     int
-	VotesAgainst int
-	QuorumNeeded int            // minimum votes required for result to be valid
-	TotalMembers int            // snapshot of active members at creation
-	DeadlineAt   time.Time
-	ResolvedAt   *time.Time
-	CreatedAt    time.Time
+	ID           uuid.UUID       `json:"id"`
+	FundID       uuid.UUID       `json:"fund_id"`
+	ProposerID   uuid.UUID       `json:"proposer_id"` // fund_member.id
+	Type         ProposalType    `json:"type"`
+	Status       ProposalStatus  `json:"status"`
+	Payload      json.RawMessage `json:"payload"`
+	VotesFor     int             `json:"votes_for"`
+	VotesAgainst int             `json:"votes_against"`
+	QuorumNeeded int             `json:"quorum_needed"` // minimum votes required for result to be valid
+	TotalMembers int             `json:"total_members"` // snapshot of active members at creation
+	DeadlineAt   time.Time       `json:"deadline_at"`
+	ResolvedAt   *time.Time      `json:"resolved_at,omitempty"`
+	CreatedAt    time.Time       `json:"created_at"`
 }
 
 // Vote is an individual member's vote on a proposal.
 type Vote struct {
-	ID         uuid.UUID
-	ProposalID uuid.UUID
-	MemberID   uuid.UUID
-	Choice     VoteChoice
-	CreatedAt  time.Time
+	ID         uuid.UUID  `json:"id"`
+	ProposalID uuid.UUID  `json:"proposal_id"`
+	MemberID   uuid.UUID  `json:"member_id"`
+	Choice     VoteChoice `json:"choice"`
+	CreatedAt  time.Time  `json:"created_at"`
 }
 
 // IsExpired returns true if the deadline has passed and the proposal is still open.

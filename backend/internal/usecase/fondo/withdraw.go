@@ -33,8 +33,8 @@ type WithdrawPreview struct {
 
 // WithdrawResult holds the created ledger entries.
 type WithdrawResult struct {
-	WithdrawalEntry *ledger.LedgerEntry
-	PenaltyEntry    *ledger.LedgerEntry // nil when no early-withdrawal penalty
+	WithdrawalEntry *ledger.LedgerEntry `json:"withdrawal_entry"`
+	PenaltyEntry    *ledger.LedgerEntry `json:"penalty_entry,omitempty"` // nil when no early-withdrawal penalty
 }
 
 // Preview returns the penalty calculation for a prospective withdrawal (no DB writes).

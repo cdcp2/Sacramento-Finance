@@ -24,19 +24,19 @@ const (
 )
 
 type User struct {
-	ID                 uuid.UUID
-	DocumentType       DocumentType
-	DocumentNumber     string
-	Email              string
-	Phone              string
-	FullName           string
-	PasswordHash       string
-	IsVerified         bool
-	VerificationStatus VerificationStatus
-	VerificationRef    *string
-	VerifiedAt         *time.Time
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
+	ID                 uuid.UUID          `json:"id"`
+	DocumentType       DocumentType       `json:"document_type"`
+	DocumentNumber     string             `json:"document_number"`
+	Email              string             `json:"email"`
+	Phone              string             `json:"phone"`
+	FullName           string             `json:"full_name"`
+	PasswordHash       string             `json:"-"`
+	IsVerified         bool               `json:"is_verified"`
+	VerificationStatus VerificationStatus `json:"verification_status"`
+	VerificationRef    *string            `json:"verification_ref,omitempty"`
+	VerifiedAt         *time.Time         `json:"verified_at,omitempty"`
+	CreatedAt          time.Time          `json:"created_at"`
+	UpdatedAt          time.Time          `json:"updated_at"`
 }
 
 func (u *User) Sanitized() UserPublic {

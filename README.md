@@ -39,3 +39,7 @@ Health check:
 ```bash
 curl http://localhost:8080/health
 ```
+
+API contract for frontend work:
+
+- [backend/API.md](backend/API.md)

@@ -452,7 +452,7 @@ func TestFundHandler_Get_MemberCanViewFund(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200; body=%s", w.Code, w.Body.String())
 	}
-	assertJSONContains(t, w.Body.Bytes(), `"Name":"Fondo test"`)
+	assertJSONContains(t, w.Body.Bytes(), `"name":"Fondo test"`)
 }
 
 func TestFundHandler_Get_NonMemberReturns403(t *testing.T) {

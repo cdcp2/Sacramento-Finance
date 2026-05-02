@@ -216,6 +216,7 @@ func TestAuthHandler_Login_WithEmail_ReturnsTokens(t *testing.T) {
 		Data struct {
 			AccessToken  string `json:"access_token"`
 			RefreshToken string `json:"refresh_token"`
+			TokenType    string `json:"token_type"`
 			ExpiresIn    int64  `json:"expires_in"`
 		} `json:"data"`
 	}
@@ -224,6 +225,9 @@ func TestAuthHandler_Login_WithEmail_ReturnsTokens(t *testing.T) {
 	}
 	if body.Data.AccessToken == "" || body.Data.RefreshToken == "" {
 		t.Fatal("expected access and refresh tokens")
+	}
+	if body.Data.TokenType != "Bearer" {
+		t.Errorf("token_type = %q, want Bearer", body.Data.TokenType)
 	}
 	if body.Data.ExpiresIn != int64((15 * time.Minute).Seconds()) {
 		t.Errorf("expires_in = %d, want 900", body.Data.ExpiresIn)

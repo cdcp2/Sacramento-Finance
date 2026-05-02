@@ -175,6 +175,9 @@ func TestLogin_WithEmail_Success_ReturnsValidTokens(t *testing.T) {
 	if tokens.AccessToken == "" || tokens.RefreshToken == "" {
 		t.Fatal("expected both access and refresh tokens")
 	}
+	if tokens.TokenType != "Bearer" {
+		t.Errorf("TokenType = %q, want Bearer", tokens.TokenType)
+	}
 	if tokens.ExpiresIn != int64(ttl.Seconds()) {
 		t.Errorf("ExpiresIn = %d, want %d", tokens.ExpiresIn, int64(ttl.Seconds()))
 	}

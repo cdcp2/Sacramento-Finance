@@ -31,8 +31,8 @@ func NewRecordPaymentUseCase(payments ReadPaymentRepository, ledger LedgerReposi
 }
 
 type RecordPaymentResult struct {
-	Payment *ledger.Payment
-	Entry   *ledger.LedgerEntry
+	Payment *ledger.Payment     `json:"payment"`
+	Entry   *ledger.LedgerEntry `json:"entry"`
 }
 
 // Execute records a payment for a fund member.
@@ -42,7 +42,7 @@ func (uc *RecordPaymentUseCase) Execute(
 	ctx context.Context,
 	paymentID uuid.UUID,
 	memberID uuid.UUID, // the fund_member.id of the requester
-	userID uuid.UUID,   // the user.id (for ledger)
+	userID uuid.UUID, // the user.id (for ledger)
 	f *fund.Fund,
 ) (*RecordPaymentResult, error) {
 	p, err := uc.payments.GetByID(ctx, paymentID)

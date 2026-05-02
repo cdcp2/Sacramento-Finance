@@ -43,9 +43,9 @@ func NewCloseRoundUseCase(
 
 // CloseRoundResult is returned on success.
 type CloseRoundResult struct {
-	Payout    *ledger.Payout
-	Config    *fund.CirculoConfig
-	Completed bool // true when the last round was just closed
+	Payout    *ledger.Payout      `json:"payout"`
+	Config    *fund.CirculoConfig `json:"config"`
+	Completed bool                `json:"completed"` // true when the last round was just closed
 }
 
 // Execute closes the current round of a circulo fund:
