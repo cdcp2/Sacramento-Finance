@@ -3,7 +3,8 @@
 .codex
 .vscode/
 .idea/
-memory
+memory/
+
 # Environment and secrets
 .env
 .env.*

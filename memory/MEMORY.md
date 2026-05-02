@@ -1,2 +1,0 @@
-- [Backend Stack](project_stack.md) — Go/Gin MVP, simulated money, solo dev, PostgreSQL, key tech decisions
-- [Project Structure](project_structure.md) — Clean Architecture layout, key file locations, fund types
