@@ -11,6 +11,7 @@ type Config struct {
 	Server   ServerConfig
 	Database DatabaseConfig
 	Auth     AuthConfig
+	Email    EmailConfig
 	Log      LogConfig
 }
 
@@ -40,6 +41,15 @@ type AuthConfig struct {
 	JWTSecret            string `mapstructure:"jwt_secret"`
 	AccessTokenDuration  string `mapstructure:"access_token_duration"`  // e.g. "15m"
 	RefreshTokenDuration string `mapstructure:"refresh_token_duration"` // e.g. "168h"
+}
+
+type EmailConfig struct {
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	Username string `mapstructure:"username"`
+	Password string `mapstructure:"password"`
+	From     string `mapstructure:"from"`
+	Enabled  bool   `mapstructure:"enabled"`
 }
 
 type LogConfig struct {
@@ -87,6 +97,11 @@ func setDefaults() {
 	viper.SetDefault("auth.jwt_secret", "change-me-in-production-please")
 	viper.SetDefault("auth.access_token_duration", "15m")
 	viper.SetDefault("auth.refresh_token_duration", "168h")
+
+	viper.SetDefault("email.host", "smtp.gmail.com")
+	viper.SetDefault("email.port", 587)
+	viper.SetDefault("email.from", "noreply@sacramento.finance")
+	viper.SetDefault("email.enabled", false)
 
 	viper.SetDefault("log.level", "info")
 }

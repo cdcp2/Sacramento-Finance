@@ -13,10 +13,11 @@ import (
 type AuthHandler struct {
 	register *auth.RegisterUseCase
 	login    *auth.LoginUseCase
+	refresh  *auth.RefreshUseCase
 }
 
-func NewAuthHandler(register *auth.RegisterUseCase, login *auth.LoginUseCase) *AuthHandler {
-	return &AuthHandler{register: register, login: login}
+func NewAuthHandler(register *auth.RegisterUseCase, login *auth.LoginUseCase, refresh *auth.RefreshUseCase) *AuthHandler {
+	return &AuthHandler{register: register, login: login, refresh: refresh}
 }
 
 type registerRequest struct {
@@ -122,6 +123,26 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		Email:          req.Email,
 		Password:       req.Password,
 	})
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": tokens})
+}
+
+type refreshRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+func (h *AuthHandler) Refresh(c *gin.Context) {
+	var req refreshRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "VALIDATION_ERROR", "message": err.Error()}})
+		return
+	}
+
+	tokens, err := h.refresh.Execute(req.RefreshToken)
 	if err != nil {
 		respondError(c, err)
 		return

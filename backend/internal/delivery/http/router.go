@@ -34,6 +34,7 @@ func SetupRouter(h *Handlers, jwtSecret string) *gin.Engine {
 	{
 		authRoutes.POST("/register", h.Auth.Register)
 		authRoutes.POST("/login", h.Auth.Login)
+		authRoutes.POST("/refresh", h.Auth.Refresh)
 	}
 
 	protected := v1.Group("")

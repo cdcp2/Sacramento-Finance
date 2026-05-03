@@ -56,11 +56,13 @@ func (m *mockAuthUserRepo) Update(_ context.Context, u *user.User) error {
 func newAuthRouter(repo *mockAuthUserRepo) *gin.Engine {
 	r := gin.New()
 	registerUC := auth.NewRegisterUseCase(repo)
-	loginUC := auth.NewLoginUseCase(repo, "test-secret", 15*time.Minute)
-	h := handler.NewAuthHandler(registerUC, loginUC)
+	loginUC    := auth.NewLoginUseCase(repo, "test-secret", 15*time.Minute)
+	refreshUC  := auth.NewRefreshUseCase("test-secret", 15*time.Minute)
+	h := handler.NewAuthHandler(registerUC, loginUC, refreshUC)
 
 	r.POST("/auth/register", h.Register)
 	r.POST("/auth/login", h.Login)
+	r.POST("/auth/refresh", h.Refresh)
 	return r
 }
 

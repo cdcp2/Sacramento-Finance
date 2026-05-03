@@ -16,6 +16,7 @@ import (
 	deliveryhttp "github.com/sacramento-finance/backend/internal/delivery/http"
 	"github.com/sacramento-finance/backend/internal/delivery/http/handler"
 	"github.com/sacramento-finance/backend/internal/infrastructure/postgres"
+	infranotif "github.com/sacramento-finance/backend/internal/infrastructure/notification"
 	"github.com/sacramento-finance/backend/internal/infrastructure/repository"
 	"github.com/sacramento-finance/backend/internal/usecase/auth"
 	uccirculo "github.com/sacramento-finance/backend/internal/usecase/circulo"
@@ -55,18 +56,18 @@ func main() {
 	log.Info().Str("host", cfg.Database.Host).Msg("connected to postgresql")
 
 	// Repositories
-	userRepo := repository.NewUserRepo(db)
-	fundRepo := repository.NewFundRepo(db)
-	memberRepo := repository.NewMemberRepo(db)
-	paymentRepo := repository.NewPaymentRepo(db)
-	ledgerRepo := repository.NewLedgerRepo(db)
-	proposalRepo := repository.NewProposalRepo(db)
-	voteRepo := repository.NewVoteRepo(db)
-	circuloRepo := repository.NewCirculoConfigRepo(db)
-	vacaRepo := repository.NewVacaConfigRepo(db)
-	fondoRepo := repository.NewFondoConfigRepo(db)
-	payoutRepo := repository.NewPayoutRepo(db)
-	notificationRepo := repository.NewNotificationRepo(db)
+	userRepo          := repository.NewUserRepo(db)
+	fundRepo          := repository.NewFundRepo(db)
+	memberRepo        := repository.NewMemberRepo(db)
+	paymentRepo       := repository.NewPaymentRepo(db)
+	ledgerRepo        := repository.NewLedgerRepo(db)
+	proposalRepo      := repository.NewProposalRepo(db)
+	voteRepo          := repository.NewVoteRepo(db)
+	circuloRepo       := repository.NewCirculoConfigRepo(db)
+	vacaRepo          := repository.NewVacaConfigRepo(db)
+	fondoRepo         := repository.NewFondoConfigRepo(db)
+	payoutRepo        := repository.NewPayoutRepo(db)
+	notificationRepo  := repository.NewNotificationRepo(db)
 
 	// Auth use cases
 	accessTTL, err := time.ParseDuration(cfg.Auth.AccessTokenDuration)
@@ -74,42 +75,52 @@ func main() {
 		accessTTL = 15 * time.Minute
 	}
 	registerUC := auth.NewRegisterUseCase(userRepo)
-	loginUC := auth.NewLoginUseCase(userRepo, cfg.Auth.JWTSecret, accessTTL)
+	loginUC    := auth.NewLoginUseCase(userRepo, cfg.Auth.JWTSecret, accessTTL)
+	refreshUC  := auth.NewRefreshUseCase(cfg.Auth.JWTSecret, accessTTL)
 
 	// Payment use cases
 	generateScheduleUC := ucpayment.NewGenerateScheduleUseCase(paymentRepo)
-	recordPaymentUC := ucpayment.NewRecordPaymentUseCase(paymentRepo, ledgerRepo)
-	waivePaymentUC := ucpayment.NewWaivePaymentUseCase(paymentRepo)
+	recordPaymentUC    := ucpayment.NewRecordPaymentUseCase(paymentRepo, ledgerRepo)
+	waivePaymentUC     := ucpayment.NewWaivePaymentUseCase(paymentRepo)
+	markOverdueUC      := ucpayment.NewMarkOverdueUseCase(paymentRepo)
 
 	// Product-specific use cases
 	assignPayoutOrderUC := uccirculo.NewAssignPayoutOrderUseCase(circuloRepo, memberRepo)
-	closeRoundUC := uccirculo.NewCloseRoundUseCase(fundRepo, memberRepo, circuloRepo, payoutRepo, ledgerRepo)
-	getProgressUC := ucvaca.NewGetProgressUseCase(vacaRepo, ledgerRepo)
-	distributeVacaUC := ucvaca.NewDistributeUseCase(vacaRepo, fundRepo, memberRepo, ledgerRepo)
-	accrueInterestUC := ucfondo.NewAccrueInterestUseCase(fondoRepo, ledgerRepo)
-	withdrawUC := ucfondo.NewWithdrawUseCase(fondoRepo, ledgerRepo)
+	closeRoundUC        := uccirculo.NewCloseRoundUseCase(fundRepo, memberRepo, circuloRepo, payoutRepo, ledgerRepo)
+	getProgressUC       := ucvaca.NewGetProgressUseCase(vacaRepo, ledgerRepo)
+	distributeVacaUC    := ucvaca.NewDistributeUseCase(vacaRepo, fundRepo, memberRepo, ledgerRepo)
+	accrueInterestUC    := ucfondo.NewAccrueInterestUseCase(fondoRepo, ledgerRepo)
+	withdrawUC          := ucfondo.NewWithdrawUseCase(fondoRepo, ledgerRepo)
 
 	// Governance use cases
 	createProposalUC := ucgovernance.NewCreateProposalUseCase(proposalRepo, memberRepo)
-	castVoteUC := ucgovernance.NewCastVoteUseCase(
+	castVoteUC       := ucgovernance.NewCastVoteUseCase(
 		proposalRepo, voteRepo,
 		fundRepo, memberRepo,
 		paymentRepo, generateScheduleUC, distributeVacaUC,
 	)
 
-	// Notification service
+	// Notification service (with optional email sender)
 	notifSvc := ucnotif.NewService(notificationRepo)
+	if cfg.Email.Enabled {
+		smtpSender := infranotif.NewSMTPSender(
+			cfg.Email.Host, cfg.Email.Port,
+			cfg.Email.Username, cfg.Email.Password, cfg.Email.From,
+		)
+		notifSvc = notifSvc.WithEmail(smtpSender, userRepo)
+		log.Info().Str("host", cfg.Email.Host).Msg("email sender enabled")
+	}
 
 	// Handlers
-	authHandler := handler.NewAuthHandler(registerUC, loginUC)
-	userHandler := handler.NewUserHandler(userRepo)
-	fundHandler := handler.NewFundHandler(fundRepo, memberRepo, userRepo, generateScheduleUC, circuloRepo, vacaRepo, fondoRepo, notifSvc)
-	paymentHandler := handler.NewPaymentHandler(recordPaymentUC, waivePaymentUC, paymentRepo, ledgerRepo, fundRepo, memberRepo, notifSvc)
-	proposalHandler := handler.NewProposalHandler(createProposalUC, castVoteUC, proposalRepo, voteRepo, fundRepo, memberRepo, notifSvc)
-	dashboardHandler := handler.NewDashboardHandler(fundRepo, memberRepo, paymentRepo, proposalRepo, notificationRepo)
-	circuloHandler := handler.NewCirculoHandler(assignPayoutOrderUC, closeRoundUC, circuloRepo, payoutRepo, fundRepo, memberRepo, notifSvc)
-	vacaHandler := handler.NewVacaHandler(getProgressUC, distributeVacaUC, vacaRepo, fundRepo, memberRepo, notifSvc)
-	fondoHandler := handler.NewFondoHandler(accrueInterestUC, withdrawUC, fondoRepo, ledgerRepo, fundRepo, memberRepo, notifSvc)
+	authHandler         := handler.NewAuthHandler(registerUC, loginUC, refreshUC)
+	userHandler         := handler.NewUserHandler(userRepo)
+	fundHandler         := handler.NewFundHandler(fundRepo, memberRepo, userRepo, generateScheduleUC, circuloRepo, vacaRepo, fondoRepo, notifSvc)
+	paymentHandler      := handler.NewPaymentHandler(recordPaymentUC, waivePaymentUC, paymentRepo, ledgerRepo, fundRepo, memberRepo, notifSvc)
+	proposalHandler     := handler.NewProposalHandler(createProposalUC, castVoteUC, proposalRepo, voteRepo, fundRepo, memberRepo, notifSvc)
+	dashboardHandler    := handler.NewDashboardHandler(fundRepo, memberRepo, paymentRepo, proposalRepo, notificationRepo)
+	circuloHandler      := handler.NewCirculoHandler(assignPayoutOrderUC, closeRoundUC, circuloRepo, payoutRepo, fundRepo, memberRepo, notifSvc)
+	vacaHandler         := handler.NewVacaHandler(getProgressUC, distributeVacaUC, vacaRepo, fundRepo, memberRepo, notifSvc)
+	fondoHandler        := handler.NewFondoHandler(accrueInterestUC, withdrawUC, fondoRepo, ledgerRepo, fundRepo, memberRepo, notifSvc)
 	notificationHandler := handler.NewNotificationHandler(notificationRepo)
 
 	router := deliveryhttp.SetupRouter(&deliveryhttp.Handlers{
@@ -124,6 +135,26 @@ func main() {
 		Fondo:        fondoHandler,
 		Notification: notificationHandler,
 	}, cfg.Auth.JWTSecret)
+
+	// Background job: mark overdue payments once per day at startup + every 24h
+	go func() {
+		runMarkOverdue := func() {
+			n, err := markOverdueUC.Execute(context.Background(), time.Now().UTC())
+			if err != nil {
+				log.Error().Err(err).Msg("mark overdue job failed")
+				return
+			}
+			if n > 0 {
+				log.Info().Int("count", n).Msg("marked overdue payments")
+			}
+		}
+		runMarkOverdue() // run once at startup
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			runMarkOverdue()
+		}
+	}()
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Server.Port,

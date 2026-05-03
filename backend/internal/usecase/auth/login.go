@@ -26,8 +26,9 @@ type TokenPair struct {
 }
 
 type Claims struct {
-	UserID   string `json:"user_id"`
-	FullName string `json:"full_name"`
+	UserID    string `json:"user_id"`
+	FullName  string `json:"full_name"`
+	TokenKind string `json:"kind"` // "access" | "refresh"
 	jwt.RegisteredClaims
 }
 
@@ -63,8 +64,9 @@ func (uc *LoginUseCase) Execute(ctx context.Context, in LoginInput) (*TokenPair,
 	accessExpiry := now.Add(uc.accessTTL)
 
 	claims := Claims{
-		UserID:   u.ID.String(),
-		FullName: u.FullName,
+		UserID:    u.ID.String(),
+		FullName:  u.FullName,
+		TokenKind: "access",
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   u.ID.String(),
 			IssuedAt:  jwt.NewNumericDate(now),
@@ -80,7 +82,8 @@ func (uc *LoginUseCase) Execute(ctx context.Context, in LoginInput) (*TokenPair,
 
 	refreshExpiry := now.Add(7 * 24 * time.Hour)
 	refreshClaims := Claims{
-		UserID: u.ID.String(),
+		UserID:    u.ID.String(),
+		TokenKind: "refresh",
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   u.ID.String(),
 			IssuedAt:  jwt.NewNumericDate(now),

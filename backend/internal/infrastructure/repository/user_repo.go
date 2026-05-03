@@ -89,6 +89,15 @@ func (r *UserRepo) Update(ctx context.Context, u *user.User) error {
 	return err
 }
 
+// GetEmailByUserID implements ucnotif.UserEmailLookup.
+func (r *UserRepo) GetEmailByUserID(ctx context.Context, id uuid.UUID) (string, error) {
+	u, err := r.GetByID(ctx, id)
+	if err != nil || u == nil {
+		return "", err
+	}
+	return u.Email, nil
+}
+
 func (r *UserRepo) scanOne(ctx context.Context, query string, args ...any) (*user.User, error) {
 	row := r.db.QueryRow(ctx, query, args...)
 	u := &user.User{}
