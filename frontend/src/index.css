@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@theme {
+  /* ── Brand colors extraídos del logo Sacramento Finance ── */
+  --color-navy-950: #060e1a;
+  --color-navy-900: #0c1829;   /* fondo principal dark */
+  --color-navy-800: #111f35;   /* sidebar */
+  --color-navy-700: #162840;   /* cards */
+  --color-navy-600: #1e3655;   /* borders / hover */
+
+  --color-brand-blue:  #1b6fd4;  /* azul del logo */
+  --color-brand-cyan:  #00c8d7;  /* cyan del logo */
+  --color-brand-green: #5db543;  /* verde lima del logo */
+  --color-brand-cta:   #00c853;  /* verde botones CTA */
+
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger:  #ef4444;
+  --color-muted:   #64748b;
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { color-scheme: dark; }
+
+  body {
+    background-color: var(--color-navy-900);
+    color: #f1f5f9;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::-webkit-scrollbar       { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--color-navy-600); border-radius: 9999px; }
+}
+
+@layer utilities {
+  .glass {
+    background: rgba(22, 40, 64, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .card {
+    background-color: var(--color-navy-700);
+    border: 1px solid var(--color-navy-600);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+  }
+}
