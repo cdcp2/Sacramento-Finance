@@ -22,6 +22,15 @@ type MemberRepository interface {
 	CountActive(ctx context.Context, fundID uuid.UUID) (int, error)
 }
 
+type InvitationRepository interface {
+	Create(ctx context.Context, invitation *FundInvitation) error
+	GetByID(ctx context.Context, id uuid.UUID) (*FundInvitation, error)
+	ListByInvitee(ctx context.Context, inviteeID uuid.UUID) ([]*FundInvitation, error)
+	ListByFund(ctx context.Context, fundID uuid.UUID) ([]*FundInvitation, error)
+	Update(ctx context.Context, invitation *FundInvitation) error
+	FindPending(ctx context.Context, fundID, inviteeID uuid.UUID) (*FundInvitation, error)
+}
+
 type CirculoRepository interface {
 	Create(ctx context.Context, c *CirculoConfig) error
 	GetByFundID(ctx context.Context, fundID uuid.UUID) (*CirculoConfig, error)

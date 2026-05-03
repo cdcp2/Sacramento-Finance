@@ -16,6 +16,7 @@ var emailableTypes = map[notification.Type]bool{
 	notification.TypePayoutReceived:   true,
 	notification.TypeWithdrawal:       true,
 	notification.TypeGoalReached:      true,
+	notification.TypeFundInvitation:   true,
 	notification.TypeProposalCreated:  true,
 	notification.TypeProposalResolved: true,
 }

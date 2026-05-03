@@ -232,3 +232,122 @@ func (r *MemberRepo) scanMember(ctx context.Context, query string, args ...any) 
 	}
 	return m, nil
 }
+
+// --- InvitationRepo ---
+
+type InvitationRepo struct {
+	db *pgxpool.Pool
+}
+
+func NewInvitationRepo(db *pgxpool.Pool) *InvitationRepo {
+	return &InvitationRepo{db: db}
+}
+
+func (r *InvitationRepo) Create(ctx context.Context, invitation *fund.FundInvitation) error {
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO fund_invitations (
+			id, fund_id, inviter_id, invitee_id, status, message,
+			expires_at, responded_at, created_at, updated_at
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+	`,
+		invitation.ID, invitation.FundID, invitation.InviterID, invitation.InviteeID,
+		invitation.Status, invitation.Message, invitation.ExpiresAt, invitation.RespondedAt,
+		invitation.CreatedAt, invitation.UpdatedAt,
+	)
+	return err
+}
+
+func (r *InvitationRepo) GetByID(ctx context.Context, id uuid.UUID) (*fund.FundInvitation, error) {
+	return r.scanInvitation(ctx, `
+		SELECT id, fund_id, inviter_id, invitee_id, status, message,
+		       expires_at, responded_at, created_at, updated_at
+		FROM fund_invitations WHERE id = $1
+	`, id)
+}
+
+func (r *InvitationRepo) ListByInvitee(ctx context.Context, inviteeID uuid.UUID) ([]*fund.FundInvitation, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT id, fund_id, inviter_id, invitee_id, status, message,
+		       expires_at, responded_at, created_at, updated_at
+		FROM fund_invitations
+		WHERE invitee_id = $1
+		ORDER BY status = 'pending' DESC, created_at DESC
+	`, inviteeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return scanInvitations(rows)
+}
+
+func (r *InvitationRepo) ListByFund(ctx context.Context, fundID uuid.UUID) ([]*fund.FundInvitation, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT id, fund_id, inviter_id, invitee_id, status, message,
+		       expires_at, responded_at, created_at, updated_at
+		FROM fund_invitations
+		WHERE fund_id = $1
+		ORDER BY status = 'pending' DESC, created_at DESC
+	`, fundID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return scanInvitations(rows)
+}
+
+func (r *InvitationRepo) Update(ctx context.Context, invitation *fund.FundInvitation) error {
+	invitation.UpdatedAt = time.Now().UTC()
+	_, err := r.db.Exec(ctx, `
+		UPDATE fund_invitations
+		SET status=$1, message=$2, expires_at=$3, responded_at=$4, updated_at=$5
+		WHERE id=$6
+	`,
+		invitation.Status, invitation.Message, invitation.ExpiresAt,
+		invitation.RespondedAt, invitation.UpdatedAt, invitation.ID,
+	)
+	return err
+}
+
+func (r *InvitationRepo) FindPending(ctx context.Context, fundID, inviteeID uuid.UUID) (*fund.FundInvitation, error) {
+	return r.scanInvitation(ctx, `
+		SELECT id, fund_id, inviter_id, invitee_id, status, message,
+		       expires_at, responded_at, created_at, updated_at
+		FROM fund_invitations
+		WHERE fund_id = $1 AND invitee_id = $2 AND status = 'pending'
+	`, fundID, inviteeID)
+}
+
+func (r *InvitationRepo) scanInvitation(ctx context.Context, query string, args ...any) (*fund.FundInvitation, error) {
+	row := r.db.QueryRow(ctx, query, args...)
+	invitation := &fund.FundInvitation{}
+	err := row.Scan(
+		&invitation.ID, &invitation.FundID, &invitation.InviterID, &invitation.InviteeID,
+		&invitation.Status, &invitation.Message, &invitation.ExpiresAt, &invitation.RespondedAt,
+		&invitation.CreatedAt, &invitation.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return invitation, nil
+}
+
+func scanInvitations(rows pgx.Rows) ([]*fund.FundInvitation, error) {
+	invitations := make([]*fund.FundInvitation, 0)
+	for rows.Next() {
+		invitation := &fund.FundInvitation{}
+		if err := rows.Scan(
+			&invitation.ID, &invitation.FundID, &invitation.InviterID, &invitation.InviteeID,
+			&invitation.Status, &invitation.Message, &invitation.ExpiresAt, &invitation.RespondedAt,
+			&invitation.CreatedAt, &invitation.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		invitations = append(invitations, invitation)
+	}
+	return invitations, rows.Err()
+}

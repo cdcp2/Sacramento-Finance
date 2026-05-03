@@ -20,6 +20,7 @@ const (
 	TypeGoalReached      Type = "goal_reached"
 	TypeMemberJoined     Type = "member_joined"
 	TypeMemberLeft       Type = "member_left"
+	TypeFundInvitation   Type = "fund_invitation"
 	TypeProposalCreated  Type = "proposal_created"
 	TypeProposalResolved Type = "proposal_resolved"
 )

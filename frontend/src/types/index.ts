@@ -15,6 +15,7 @@ export interface User {
   phone: string
   full_name: string
   is_verified: boolean
+  verification_status?: 'none' | 'pending' | 'approved' | 'rejected'
   created_at: string
 }
 
@@ -64,6 +65,21 @@ export interface FundMember {
   status: MemberStatus
   payout_order?: number
   joined_at: string
+}
+
+export type FundInvitationStatus = 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'expired'
+
+export interface FundInvitation {
+  id: string
+  fund_id: string
+  inviter_id: string
+  invitee_id: string
+  status: FundInvitationStatus
+  message: string
+  expires_at: string
+  responded_at?: string
+  created_at: string
+  updated_at: string
 }
 
 // ── Product configs ───────────────────────────────────────────────────────────
@@ -167,7 +183,7 @@ export type NotificationType =
   | 'payment_confirmed' | 'payment_waived' | 'payment_overdue'
   | 'payout_received' | 'round_closed'
   | 'withdrawal' | 'interest_accrued' | 'goal_reached'
-  | 'member_joined' | 'member_left'
+  | 'member_joined' | 'member_left' | 'fund_invitation'
   | 'proposal_created' | 'proposal_resolved'
 
 export interface Notification {
@@ -195,8 +211,58 @@ export interface ApiError {
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 export interface DashboardData {
-  funds: Fund[]
-  pending_payments: Payment[]
-  open_proposals: Proposal[]
+  summary: DashboardSummary
+  funds: DashboardFund[]
+  upcoming_payments: DashboardPayment[]
+  open_proposals: DashboardProposal[]
+}
+
+export interface DashboardSummary {
+  total_funds: number
+  active_funds: number
+  draft_funds: number
+  completed_funds: number
+  admin_funds: number
+  pending_payments: number
+  overdue_payments: number
+  open_proposals: number
   unread_notifications: number
+  total_pending_amount: string
+}
+
+export interface DashboardFund {
+  id: string
+  name: string
+  type: FundType
+  status: FundStatus
+  role: MemberRole
+  governance_type: GovernanceType
+  pending_payments: number
+  overdue_payments: number
+  open_proposals: number
+  next_payment?: DashboardPayment
+}
+
+export interface DashboardPayment {
+  id: string
+  fund_id: string
+  fund_name: string
+  period_number: number
+  due_date: string
+  amount_due: string
+  amount_paid: string
+  status: PaymentStatus
+  is_overdue: boolean
+}
+
+export interface DashboardProposal {
+  id: string
+  fund_id: string
+  fund_name: string
+  type: ProposalType
+  status: ProposalStatus
+  votes_for: number
+  votes_against: number
+  quorum_needed: number
+  deadline_at: string
 }

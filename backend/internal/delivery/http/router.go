@@ -17,6 +17,7 @@ type Handlers struct {
 	Vaca         *handler.VacaHandler
 	Fondo        *handler.FondoHandler
 	Notification *handler.NotificationHandler
+	Invitation   *handler.InvitationHandler
 }
 
 func SetupRouter(h *Handlers, jwtSecret string) *gin.Engine {
@@ -53,6 +54,8 @@ func SetupRouter(h *Handlers, jwtSecret string) *gin.Engine {
 			funds.POST("/:fund_id/activate", h.Fund.Activate) // admin_only mode only
 			funds.GET("/:fund_id/members", h.Fund.ListMembers)
 			funds.POST("/:fund_id/members", h.Fund.AddMember)
+			funds.GET("/:fund_id/invitations", h.Invitation.ListByFund)
+			funds.POST("/:fund_id/invitations", h.Invitation.Create)
 
 			// Payments
 			funds.GET("/:fund_id/payments", h.Payment.ListMine)
@@ -93,6 +96,13 @@ func SetupRouter(h *Handlers, jwtSecret string) *gin.Engine {
 			notifs.GET("", h.Notification.List)
 			notifs.PATCH("/:notif_id/read", h.Notification.MarkRead)
 			notifs.POST("/read-all", h.Notification.MarkAllRead)
+		}
+
+		invitations := protected.Group("/invitations")
+		{
+			invitations.GET("", h.Invitation.ListMine)
+			invitations.POST("/:invitation_id/accept", h.Invitation.Accept)
+			invitations.POST("/:invitation_id/reject", h.Invitation.Reject)
 		}
 	}
 

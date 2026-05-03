@@ -138,6 +138,29 @@ func (m *FundMember) IsAdmin() bool {
 	return m.Role == RoleAdmin
 }
 
+type InvitationStatus string
+
+const (
+	InvitationStatusPending   InvitationStatus = "pending"
+	InvitationStatusAccepted  InvitationStatus = "accepted"
+	InvitationStatusRejected  InvitationStatus = "rejected"
+	InvitationStatusCancelled InvitationStatus = "cancelled"
+	InvitationStatusExpired   InvitationStatus = "expired"
+)
+
+type FundInvitation struct {
+	ID          uuid.UUID        `json:"id"`
+	FundID      uuid.UUID        `json:"fund_id"`
+	InviterID   uuid.UUID        `json:"inviter_id"`
+	InviteeID   uuid.UUID        `json:"invitee_id"`
+	Status      InvitationStatus `json:"status"`
+	Message     string           `json:"message"`
+	ExpiresAt   time.Time        `json:"expires_at"`
+	RespondedAt *time.Time       `json:"responded_at,omitempty"`
+	CreatedAt   time.Time        `json:"created_at"`
+	UpdatedAt   time.Time        `json:"updated_at"`
+}
+
 // CirculoConfig holds Circulo-specific settings.
 type CirculoConfig struct {
 	FundID          uuid.UUID `json:"fund_id"`

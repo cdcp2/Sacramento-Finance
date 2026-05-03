@@ -38,6 +38,45 @@
   ::-webkit-scrollbar-thumb { background: var(--color-navy-600); border-radius: 9999px; }
 }
 
+/* ── Sacramento Cube Logo ── */
+.sacramento-mark {
+  --mark-size: 96px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--mark-size);
+  height: var(--mark-size);
+  flex: 0 0 auto;
+}
+
+.sacramento-mark__image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.dashboard-entry-icon {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+}
+
+.dashboard-entry-icon.warning {
+  background: rgba(245, 158, 11, 0.14);
+  color: var(--color-warning);
+}
+
+.dashboard-entry-icon.danger {
+  background: rgba(239, 68, 68, 0.14);
+  color: var(--color-danger);
+}
+
 @layer utilities {
   .glass {
     background: rgba(22, 40, 64, 0.6);
