@@ -197,6 +197,41 @@ export interface Notification {
   created_at: string
 }
 
+// ── Product-specific runtime data ─────────────────────────────────────────────
+
+export interface Payout {
+  id: string
+  fund_id: string
+  recipient_id: string
+  round_number: number
+  amount: string
+  status: 'scheduled' | 'completed' | 'failed'
+  scheduled_date: string
+  completed_at?: string
+}
+
+export interface CirculoDetail {
+  config: CirculoConfig
+  members: FundMember[]
+}
+
+export interface VacaProgress {
+  goal_amount: string
+  goal_description: string
+  distribution_type: string
+  current_balance: string
+  percentage: string
+  goal_reached: boolean
+}
+
+export interface WithdrawPreview {
+  amount: string
+  penalty_rate: string
+  penalty_amount: string
+  net_amount: string
+  is_early: boolean
+}
+
 // ── API response wrappers ─────────────────────────────────────────────────────
 
 export interface ApiResponse<T> {

@@ -1,13 +1,14 @@
 import { NavLink } from 'react-router-dom'
-import { Bell, LayoutDashboard, Settings, UsersRound, WalletCards } from 'lucide-react'
+import { Bell, LayoutDashboard, User, UsersRound, WalletCards } from 'lucide-react'
 import SacramentoLogo from '@/components/brand/SacramentoLogo'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth'
 
 const navItems = [
-  { to: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/app/funds', label: 'Mis fondos', icon: WalletCards },
-  { to: '/app/notifications', label: 'Notificaciones', icon: Bell },
+  { to: '/app/dashboard',      label: 'Dashboard',       icon: LayoutDashboard },
+  { to: '/app/funds',          label: 'Mis fondos',       icon: WalletCards },
+  { to: '/app/notifications',  label: 'Notificaciones',   icon: Bell },
+  { to: '/app/profile',        label: 'Mi cuenta',        icon: User },
 ]
 
 export default function Sidebar() {
@@ -42,13 +43,6 @@ export default function Sidebar() {
             <span>{label}</span>
           </NavLink>
         ))}
-        <NavLink
-          to="/app/settings"
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-slate-400 transition-colors hover:bg-navy-700 hover:text-white"
-        >
-          <Settings className="h-4 w-4" />
-          <span>Configuración</span>
-        </NavLink>
       </nav>
 
       <div className="mt-auto flex items-center gap-3 pt-6">

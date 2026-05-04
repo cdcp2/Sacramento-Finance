@@ -1,9 +1,10 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertTriangle,
   CalendarClock,
+  CircleDollarSign,
   Clock3,
   FolderKanban,
   Landmark,
@@ -17,6 +18,7 @@ import {
   Wallet,
 } from 'lucide-react'
 import { getDashboard } from '@/api/dashboard'
+import { payPayment } from '@/api/payments'
 import Button from '@/components/ui/Button'
 import { useAuthStore } from '@/stores/auth'
 import type { DashboardData, DashboardFund, DashboardPayment, DashboardProposal } from '@/types'
@@ -94,13 +96,13 @@ export default function DashboardPage() {
         <Link to="/app/funds">
           <Button variant="outline">
             <Landmark className="h-4 w-4" />
-            Solicitar préstamo
+            Ver mis fondos
           </Button>
         </Link>
-        <Link to="/app/funds">
+        <Link to="/app/notifications">
           <Button variant="outline">
             <ReceiptText className="h-4 w-4" />
-            Pagar cuota
+            Notificaciones
           </Button>
         </Link>
       </div>
@@ -190,30 +192,56 @@ function UpcomingPayments({ payments }: { payments: DashboardPayment[] }) {
   return (
     <div className="divide-y divide-navy-600/70">
       {payments.map((payment) => (
-        <Link
-          key={payment.id}
-          to={`/app/funds/${payment.fund_id}/payments`}
-          className="flex items-center justify-between gap-4 py-4 transition-colors hover:text-white"
-        >
-          <div className="flex min-w-0 items-center gap-3">
-            <div className={payment.is_overdue ? 'dashboard-entry-icon danger' : 'dashboard-entry-icon warning'}>
-              <Clock3 className="h-4 w-4" />
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-white">{payment.fund_name}</p>
-              <p className="text-xs text-slate-500">
-                Cuota {payment.period_number} · {formatDate(payment.due_date)}
-              </p>
-            </div>
-          </div>
-          <div className="text-right">
-            <p className="text-sm font-semibold text-white">{formatCOP(payment.amount_due)}</p>
-            <p className={payment.is_overdue ? 'text-xs text-danger' : 'text-xs text-warning'}>
-              {payment.is_overdue ? 'En mora' : PAYMENT_STATUS_LABEL[payment.status]}
-            </p>
-          </div>
-        </Link>
+        <UpcomingPaymentRow key={payment.id} payment={payment} />
       ))}
+    </div>
+  )
+}
+
+function UpcomingPaymentRow({ payment }: { payment: DashboardPayment }) {
+  const qc = useQueryClient()
+  const canPay = payment.status === 'pending' || payment.status === 'partial'
+
+  const payMut = useMutation({
+    mutationFn: () => payPayment(payment.fund_id, payment.id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+      qc.invalidateQueries({ queryKey: ['payments-mine', payment.fund_id] })
+      qc.invalidateQueries({ queryKey: ['ledger', payment.fund_id] })
+    },
+  })
+
+  return (
+    <div className="flex items-center justify-between gap-4 py-4">
+      <Link
+        to={`/app/funds/${payment.fund_id}/payments`}
+        className="flex min-w-0 flex-1 items-center gap-3 hover:opacity-80 transition-opacity"
+      >
+        <div className={payment.is_overdue ? 'dashboard-entry-icon danger' : 'dashboard-entry-icon warning'}>
+          <Clock3 className="h-4 w-4" />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-white">{payment.fund_name}</p>
+          <p className="text-xs text-slate-500">
+            Cuota {payment.period_number} · {formatDate(payment.due_date)}
+          </p>
+        </div>
+      </Link>
+
+      <div className="flex shrink-0 items-center gap-3">
+        <div className="text-right">
+          <p className="text-sm font-semibold text-white">{formatCOP(payment.amount_due)}</p>
+          <p className={payment.is_overdue ? 'text-xs text-danger' : 'text-xs text-warning'}>
+            {payment.is_overdue ? 'En mora' : PAYMENT_STATUS_LABEL[payment.status]}
+          </p>
+        </div>
+        {canPay && (
+          <Button size="sm" loading={payMut.isPending} onClick={() => payMut.mutate()}>
+            <CircleDollarSign className="h-3.5 w-3.5" />
+            Pagar
+          </Button>
+        )}
+      </div>
     </div>
   )
 }

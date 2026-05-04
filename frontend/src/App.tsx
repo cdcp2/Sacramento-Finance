@@ -17,6 +17,7 @@ import FundsPage from '@/features/funds/FundsPage'
 import FundDetailPage from '@/features/funds/FundDetailPage'
 import PaymentsPage from '@/features/payments/PaymentsPage'
 import NotificationsPage from '@/features/notifications/NotificationsPage'
+import ProfilePage from '@/features/profile/ProfilePage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -62,6 +63,7 @@ export default function App() {
               <Route path="funds/:fundId" element={<FundDetailPage />} />
               <Route path="funds/:fundId/payments" element={<PaymentsPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
+              <Route path="profile" element={<ProfilePage />} />
             </Route>
 
             <Route path="/" element={<Navigate to="/app/dashboard" replace />} />

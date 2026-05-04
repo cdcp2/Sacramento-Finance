@@ -1,11 +1,20 @@
-import { Outlet } from 'react-router-dom'
+import { Link, Outlet } from 'react-router-dom'
 import { Bell } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import Sidebar from './Sidebar'
 import SacramentoLogo from '@/components/brand/SacramentoLogo'
+import { getNotifications } from '@/api/notifications'
 import { useAuthStore } from '@/stores/auth'
 
 export default function AppLayout() {
   const user = useAuthStore((s) => s.user)
+
+  const { data: notifData } = useQuery({
+    queryKey: ['notifications-unread'],
+    queryFn: () => getNotifications(1),
+    staleTime: 60_000,
+  })
+  const unreadCount = notifData?.unread_count ?? 0
 
   return (
     <div className="flex h-screen overflow-hidden bg-navy-900">
@@ -20,14 +29,16 @@ export default function AppLayout() {
           </div>
 
           <div className="flex items-center gap-4">
-            <button
-              type="button"
+            <Link
+              to="/app/notifications"
               className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-navy-700 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cyan"
               aria-label="Notificaciones"
             >
               <Bell className="h-4 w-4" />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-danger" />
-            </button>
+              {unreadCount > 0 && (
+                <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-danger" />
+              )}
+            </Link>
             <SacramentoLogo size="sm" showText={false} />
           </div>
         </header>

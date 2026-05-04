@@ -56,6 +56,18 @@ export async function createFund(payload: CreateFundPayload): Promise<Fund> {
   return data.data
 }
 
+export type UpdateRulesPayload = Pick<
+  CreateFundPayload,
+  | 'name' | 'type' | 'contribution_amount' | 'frequency' | 'total_periods' | 'start_date'
+  | 'penalty_enabled' | 'penalty_type' | 'penalty_amount' | 'grace_period_days'
+  | 'min_members' | 'max_members' | 'governance_type' | 'voting_deadline_hours'
+>
+
+export async function updateFundRules(fundId: string, payload: UpdateRulesPayload): Promise<Fund> {
+  const { data } = await client.patch<{ data: Fund }>(`/funds/${fundId}`, payload)
+  return data.data
+}
+
 export async function listFundMembers(fundId: string): Promise<FundMember[]> {
   const { data } = await client.get<{ data: FundMember[] | null }>(`/funds/${fundId}/members`)
   return arrayOrEmpty(data.data)
